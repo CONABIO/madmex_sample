@@ -1,0 +1,53 @@
+---
+title: "Diseño de respuesta MadMex 2015"
+date: "8/22/2017"
+output: word_document
+---
+
+### Muestra
+Se seleccionaron 15,000 puntos de validación, estos se validarán en 5 tandas 
+cada una con 3,000 puntos.
+
+### Entrega a expertos
+
+### Protocolo de validación
+
+* Fuentes de información disponible:
+* Clases MadMex.    
+* Dado el esquema de clases, decidir qué hacer en caso de que una unidad espacial sea poco clara o heterogénea: asignar dos clases (first call, second call). 
+* Se debe de motivar la comunicación entre intérpretes; los casos difíciles deben ser documentados a lo largo del proceso. 
+
+
+#### Clases MadMex
+*  Describir el trabajo de los intérpretes para promover consistencia 
+describir clases.
+
+* Crear ejemplos de clases e imágenes satelitales correspondientes.
+
+* La comunicación etre intérpretes es ideal para discutir casos difíciles.
+
+#### Información disponible para clasificar
+
+Con el fin de facilitar la asignación de clases por parte de los expertos, cada 
+polígono tiene asociada la siguiente información:
+
+1. Serie INEGI XXX
+
+2. Altitud promedio del polígono.
+
+3. LLuvia, temperatura, ...? algún resumen de esto?
+
+Describir clases, como se caracterizan, como se identifican, usualmente como se
+relacionan con INEGI ...
+
+Adicionalmente los interpretes tendrán acceso a: mapas RapidEye, Google Earth,..
+
+#### Protocolo de etiquetado
+* Especificación de una unidad mínima de mapeo.  
+
+Instrucciones de etiquetado:
+
+* Clase más prevalente certeza alta.  
+* Clase más prevalente certeza moderada. 
+
+### Expertos entregan a CONABIO

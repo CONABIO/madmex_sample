@@ -1,0 +1,558 @@
+---
+title: "Validación Mad-Mex"
+date: "6/30/2017"
+output:
+  html_document:
+    css: ../adicionales/cajas.css
+    theme: spacelab
+---
+
+Este documento consta de dos secciones, en la primera evaluamos distintos 
+escenarios del muestreo diseñado para validar el mapa Mad-Mex Rapid Eye 2015. En 
+la segunda explicamos el diseño muestral y la asignación de la muestra.
+
+## Escenarios simulados para la validación
+
+Usamos simulación para explicar las implicaciones de seleccionar distintos tamaños de muestra.
+
+Los objetivos de la validación son:
+
+* Estimar la proporción de área correctamente clasificada. 
+
+* Estimar la proporción de área correctamente clasificada para cada clase en cada estado. 
+
+Se propone un muestreo estratificado, donde los estratos están definidos por las clases de cobertura (asignadas por Mad-Mex), los estados de la república y una categorización del área de los polígonos. La inclusión de área de los polígonos como variable de estratificación surgió por la hipótesis de que el desempeño de Madmex varía dependiendo del tamaño de los polígonos.
+
+### Preprocesamiento
+* Los polígonos *homogeneizados* de Mad-Mex se subdividieron de manera que cada polígono pertenezca a un único estado. Es decir, si alguna geometría pertenecía a dos estados, se crearon dos nuevas geometrías. 
+
+* Se eliminaron los polígonos menores a media hectárea. Por parte de validación se considera que menos de media hectárea no puede representar una clase. Desde el punto de vista técnico, consideramos que eliminarlos tiene poco impacto pues representan menos del 4% del área total (aún cuando son 47% del total de polígonos).
+
+* Se eliminaron los polígonos con clase 98, 99 y 0, que corresponden a sombras, nubes y no dato.
+
+### Simulación
+Se crearon tres escenarios de simulación:
+
+* Se supuso que la precisión a lo largo de todas las clases era de 0.5.
+
+* Se supuso que la precisión a lo largo de todas las clases era de 0.8.
+
+* Se supuso que la precisión variaba a lo largo de las clases de acuerdo a los resultados de la validación del mapa Mad-Mex Rapideye 2011.
+
+El proceso de simulación es el siguiente:
+
+1. Utilizamos la lista de polígonos clasificados por Mad-mex y simulamos un error en la clasificación que varía según el escenario de simulación. 
+
+2. Tomamos los datos del paso 1 como si fueran la población, es decir, la clasificación producto de Mad-Mex, y seleccionamos muestras de tamaño $n$ ($n=10000,\;15000,\;20000$).
+
+3. Para cada muestra estimamos la proporción de área clasificada correcta para todo el país, para cada estado, para cada clase y para cada estado $\times$ clase.
+
+4. Analizamos la variación en las estimaciones a lo largo de las muestras.
+
+### 1. Precisión 0.5 en todas las clases
+
+#### Precisión a total
+Los histogramas de abajo corresponden a las estimaciones de la proporción de
+área correcta obtenidas de simular muestras, notamos que conforme aumenta el 
+tamaño de muestra disminuye la variación en las estimaciones. La línea roja 
+corresponde a la proporción simulada.
+
+```{r precision_0.5, echo=FALSE, message=FALSE, fig.height=3, fig.align='center'}
+library(tidyverse)
+library(printr)
+library(DT)
+
+load(file = "../datos_procesados/p_hat_numerico_0.5.RData")
+
+ggplot(p_hat_0.5, aes(x = p_hat)) +
+    geom_histogram() +
+    facet_wrap(~n) + 
+    geom_vline(xintercept = precision_sim, color = "red", alpha = 0.5)
+```
+
+La tabla de abajo muestra la media de las estimaciones para cada tamaño de 
+muestra, las desviaciones estándar y el sesgo calculados de las simulaciones.
+Notamos que para estimar la proporción de área correcta a total se obtienen 
+resultados similares con los distintos tamaños de muestra. En este caso tendríamos
+intervalos de confianza del 95% de la forma: (0.48,0.52).
+
+```{r, message=FALSE, echo=FALSE}
+#library(formatR)
+p_hat_0.5 %>%
+    group_by(n) %>%
+    summarise(
+        media = round(mean(p_hat), 2), 
+        se = round(sd(p_hat), 2),
+        sesgo = round(mean(p_hat - precision_sim), 4)
+    )
+```
+
+
+#### Estimaciones de precisión por estado 
+En el caso de estado estamos estimando 32 parámetros que corresponden a la
+proporción de área correcta en cada entidad más la ciudad de México. Los diagramas
+de caja y brazo de abajo representan las estimaciones para cada estado calculadas
+con las muestras, el punto rojo es el valor poblacional (simulado). Notamos
+que hay estados para los cuales hay mucha variación, y por tanto las estimaciones
+serán poco informativas.
+
+```{r precision_edo_0.5, echo = FALSE, fig.width=9, fig.height=4, fig.align='center'}
+ggplot(p_hat_edo_0.5) +
+    geom_boxplot(aes(x = edo_corto, y = p_hat)) +
+    facet_wrap(~n) +
+    geom_point(data = precision_sim_edo, aes(x = edo_corto, y = p_hat), 
+        color = "red", alpha = 0.5) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    labs(x = "estado", y = "estimación")
+```
+
+
+El sesgo del estimador es muy bajo, la siguiente tabla muestra el promedio de 
+las estimaciones de cada estado y notamos que es muy cercano al simulado (columna 
+*p_sim*)
+
+</br>
+```{r medias_precision_edo_0.5, echo = FALSE, message=FALSE}
+medias_se_edo_0.5 <- p_hat_edo_0.5 %>%
+    group_by(n, edo_corto) %>%
+    summarise(
+        media = round(mean(p_hat), 2), 
+        se = round(sd(p_hat), 2),
+        sesgo = round(mean(p_hat - precision_sim), 4)
+    ) 
+
+datatable(
+medias_se_edo_0.5 %>%
+    select(edo_corto, n, media) %>%
+    spread(n, media) %>% 
+    left_join(select(precision_sim_edo, p_sim = p_hat, edo_corto)) %>%
+    mutate(p_sim = round(p_sim, 2))
+)
+```
+
+Sin embargo, los errores estandar reflejan nuevamente lo que vimos en la figura, 
+para algunos estados son muy grandes. Por ejemplo, suponiendo una precisión de 0.5 
+en Tlaxcala tendríamos intervalos de confianza del 95% con la forma (0.22,0.77).
+La siguiente tabla muestra los errores estándar de las estimaciones por estado.
+
+```{r se_precision_edo_0.5, echo = FALSE}
+datatable(
+    medias_se_edo_0.5 %>%
+    select(edo_corto, n, se) %>%
+    spread(n, se)
+)
+```
+
+
+### Estimaciones de precisión por clase
+
+De manera similar a las estimaciones de estado, los errores estándar solo son
+aceptables para algunas clases.
+
+```{r precision_clase_0.5, echo = FALSE, fig.width=9, fig.height=4, fig.align='center'}
+ggplot(p_hat_clase_0.5) +
+    geom_boxplot(aes(x = factor(clase), y = p_hat)) +
+    facet_wrap(~n) +
+    geom_point(data = precision_sim_clase, aes(x = factor(clase), y = p_hat), 
+        color = "red", alpha = 0.5) +
+    labs(x = "clase cobertura", y = "estimación")
+```
+
+
+Medias
+</br>
+```{r medias_precision_clase_0.5, echo = FALSE, message=FALSE}
+medias_se_clase_0.5 <- p_hat_clase_0.5 %>%
+    group_by(n, clase) %>%
+    summarise(
+        media = round(mean(p_hat), 2), 
+        se = round(sd(p_hat), 2),
+        sesgo = round(mean(p_hat - precision_sim), 4)
+    ) 
+datatable(
+medias_se_clase_0.5 %>%
+    select(clase, n, media) %>%
+    spread(n, media) %>% 
+    left_join(select(precision_sim_clase, p_sim = p_hat, clase)) %>%
+    mutate(p_sim = round(p_sim, 2))
+)
+```
+
+Errores estándar
+</br>
+```{r se_precision_clase_0.5, echo = FALSE, message=FALSE}
+datatable(
+medias_se_clase_0.5 %>%
+    select(clase, n, se) %>%
+    spread(n, se)
+)
+```
+
+### Estimaciones de precisión por clase $\times$ estado
+
+```{r precision_clase_edo_0.5, echo = FALSE, message=FALSE, eval=FALSE}
+ggplot(p_hat_clase_edo_0.5) +
+    geom_boxplot(aes(x = factor(clase), y = p_hat)) +
+    facet_grid(edo~n) +
+    geom_point(data = precision_sim_clase_edo, aes(x = factor(clase), y = p_hat), 
+        color = "red", alpha = 0.5) +
+    labs(x = "clase cobertura", y = "estimación")
+```
+
+Para la proporción de área correcta en cada clase-estado tenemos 603 
+estimaciones, en este caso los diagramas de caja y brazo no resultan legibles
+por la cantidad de valores a evaluar. Como alternativa realizamos un histograma
+de los errores estándar de las estimaciones para los distintos tamaños de 
+muestra:
+
+```{r medias_precision_clase_edo_0.5, echo = FALSE, message=FALSE, fig.height=3.5, fig.align='center'}
+medias_se_clase_edo_0.5 <- p_hat_clase_edo_0.5 %>%
+    group_by(n, clase, edo_corto) %>%
+    summarise(
+        media = round(mean(p_hat), 2), 
+        se = round(sd(p_hat), 2),
+        sesgo = round(mean(p_hat - precision_sim), 4)
+    )  %>% 
+    left_join(select(precision_sim_clase_edo, p_sim = p_hat, clase, edo_corto)) 
+
+ggplot(medias_se_clase_edo_0.5, aes(x = se)) + 
+    geom_histogram(binwidth = 0.015) +
+    facet_wrap(~n)
+```
+
+Notamos que los errores estándar son muy grandes, la tabla de abajo muestra
+que con una muestra de tamaño 10,000 la media y mediana del error estándar son 
+0.17 puntos porcentuales, es decir, un intervalo de confianza del 95% para una
+estimación de proporción de área correcta centrada en $0.5$ con error estándar
+en el promedio ($0.17$) sería de la forma: $(0.16,0.83)$. 
+
+La siguiente tabla muestra la media, mediana y máximo de las desviaciones estándar
+con diferentes tamaños de muestra. Recordemos que estos miden la variación en 
+los estimadores de proporción correcta para las combinaciones de clases-estado.
+
+```{r, echo=FALSE}
+medias_se_clase_edo_0.5 %>%
+    group_by(n) %>%
+    summarise(
+        media_se = round(mean(se), 2),
+        mediana_se = median(se),
+        max_se =max(se)
+        )
+```
+
+Existen combinaciones de clase-estado para los cuales tenemos errores estándar
+menores a $0.10$, sin embargo, es un porcentaje muy chico, del total de 600 
+parámetros a estimar, el error es menor a 0.1 en 60 casos cuando $n = 10,000$, 
+en 80 casos con $n = 15,000$ y 133 casos con $n=20,000$.
+
+Los errores estándar grandes se deben a que el tamaño de muestra es muy chico
+para estimar cada parámetro, si asignáramos la muestra con $n =10,000$ en las 
+600 categorías de clase-estado tendríamos menos de 17 observaciones para
+estimar cada clase-estado.
+
+
+
+### 2. Precisiones que varían por clase
+
+#### Precisión a total
+Repetimos las gráficas y tablas bajo los nuevos supuestos de simulación. La
+siguiente tabla muestra la proporción de área correcta simulada para cada clase,
+estos números corresponden a los resultados de la validación Mad-mex 2011.
+
+La exactitud para la clase *cuerpo de agua* no se tenía de los resultados de 2011
+por lo que se asignó la exactitud promedio del resto de las clases.
+
+</br>
+```{r p_iniciales_2011, echo=FALSE}
+precision_clases <-
+    readRDS("../datos_procesados/exactitudes_a_priori_clase.RData")
+load(file = "../datos_procesados/p_hat_a_priori.RData")
+load(file = "../datos_procesados/p_hat_numerico_a_iniciales.RData")
+
+datatable(precision_clases)
+```
+
+En este caso la precisión simulada para a nivel país es `r  round(precision_sim,2)`.
+
+Los histogramas de las estimaciones de la proporción de área correcta a nivel país
+nuevamente muestran una precisón aceptable con los tre tamaños de muestra.
+
+```{r precision_apriori, echo=FALSE, message=FALSE, fig.height=3, fig.align='center'}
+ggplot(p_hat_0.5, aes(x = p_hat)) +
+    geom_histogram(binwidth = 0.002) +
+    facet_wrap(~n) + 
+    geom_vline(xintercept = precision_sim, color = "red", alpha = 0.5)
+```
+
+El sesgo es cercano a cero y los errores estándar menores a $0.1$.
+
+```{r, message=FALSE, echo=FALSE}
+#library(formatR)
+p_hat_0.5 %>%
+    group_by(n) %>%
+    summarise(
+        media = round(mean(p_hat), 2), 
+        se = round(sd(p_hat), 2),
+        sesgo = round(mean(p_hat - precision_sim), 4)
+    )
+```
+
+
+#### Estimaciones de precisión por estado 
+
+Diagramas de caja y brazo de las estimaciones por estado.
+
+```{r precision_edo_apriori, echo = FALSE, fig.width=9, fig.align='center'}
+ggplot(p_hat_edo_0.5) +
+    geom_boxplot(aes(x = edo_corto, y = p_hat)) +
+    facet_wrap(~n) +
+    geom_point(data = precision_sim_edo, aes(x = edo_corto, y = p_hat), 
+        color = "red", alpha = 0.5) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    labs(x = "estado", y = "estimación")
+```
+Notamos que para muchos estados hay menos variación que cuando se simuló con 
+precisión de $0.5$ a lo largo de todas las clases. Esto es porque la varianze de 
+los estimadores es máxima cuando el verdadero valor poblacional es $p=0.5$.
+
+Medias de las estimaciones por estado:
+
+```{r medias_precision_edo_apriori, echo = FALSE, message=FALSE}
+medias_se_edo_0.5 <- p_hat_edo_0.5 %>%
+    group_by(n, edo_corto) %>%
+    summarise(
+        media = round(mean(p_hat), 2), 
+        se = round(sd(p_hat), 2),
+        sesgo = round(mean(p_hat - precision_sim), 4)
+    ) 
+
+datatable(
+    medias_se_edo_0.5 %>%
+    select(edo_corto, n, media) %>%
+    spread(n, media) %>% 
+    left_join(select(precision_sim_edo, p_sim = p_hat, edo_corto)) %>%
+    mutate(p_sim = round(p_sim, 2))
+)
+```
+
+Errores estándar:
+
+```{r se_precision_edo_apriori, echo = FALSE}
+datatable(
+    medias_se_edo_0.5 %>%
+    select(edo_corto, n, se) %>%
+    spread(n, se)
+)
+```
+
+### Estimaciones de precisión por clase
+
+Diagramas de caja y brazo. Al igual que con las estimaciones de proporción 
+correcta para cada estado, notamos que los errores estándar han disminuido
+debido a los supuestos de precisión a lo largo de las clases. Pero en muchos
+casos los errores estándar no son aceptables pues resultan en intervalos de 
+confianza muy amplios.
+
+```{r precision_clase_apriori, echo = FALSE, fig.width=9, fig.align='center'}
+ggplot(p_hat_clase_0.5) +
+    geom_boxplot(aes(x = factor(clase), y = p_hat)) +
+    facet_wrap(~n) +
+    geom_point(data = precision_sim_clase, aes(x = factor(clase), y = p_hat), 
+        color = "red", alpha = 0.5) +
+    labs(x = "clase cobertura", y = "estimación")
+```
+
+
+Tabla con las medias de las estimaciones:
+</br>
+```{r medias_precision_clase_apriori, echo = FALSE, message=FALSE}
+medias_se_clase_0.5 <- p_hat_clase_0.5 %>%
+    group_by(n, clase) %>%
+    summarise(
+        media = round(mean(p_hat), 2), 
+        se = round(sd(p_hat), 2),
+        sesgo = round(mean(p_hat - precision_sim), 4)
+    ) 
+
+datatable(
+medias_se_clase_0.5 %>%
+    select(clase, n, media) %>%
+    spread(n, media) %>% 
+    left_join(select(precision_sim_clase, p_sim = p_hat, clase)) %>%
+    mutate(p_sim = round(p_sim, 2))
+)
+```
+
+Tabla con los errores estándar de las estimaciones: 
+
+```{r se_precision_clase_apriori, echo = FALSE, message=FALSE}
+datatable(
+medias_se_clase_0.5 %>%
+    select(clase, n, se) %>%
+    spread(n, se)
+)
+```
+
+### Estimaciones de precisión por clase $\times$ estado
+
+```{r precision_clase_edo_apriori, echo = FALSE, message=FALSE, eval=FALSE}
+ggplot(p_hat_clase_edo_0.5) +
+    geom_boxplot(aes(x = factor(clase), y = p_hat)) +
+    facet_grid(edo~n) +
+    geom_point(data = precision_sim_clase_edo, aes(x = factor(clase), y = p_hat), 
+        color = "red", alpha = 0.5) +
+    labs(x = "clase cobertura", y = "estimación")
+```
+
+Histogramas de errores estándar con distintos tamaños de muestra:
+
+```{r medias_precision_clase_edo_apriori, echo = FALSE, message=FALSE, fig.height=3.5, fig.align='center'}
+medias_se_clase_edo_0.5 <- p_hat_clase_edo_0.5 %>%
+    group_by(n, clase, edo_corto) %>%
+    summarise(
+        media = round(mean(p_hat), 2), 
+        se = round(sd(p_hat), 2),
+        sesgo = round(mean(p_hat - precision_sim), 4)
+    )  %>% 
+    left_join(select(precision_sim_clase_edo, p_sim = p_hat, clase, edo_corto)) 
+
+ggplot(medias_se_clase_edo_0.5, aes(x = se)) + 
+    geom_histogram(binwidth = 0.015) +
+    facet_wrap(~n)
+```
+
+La siguiente tabla muestra la media, mediana y máximo de los errores estándar
+con diferentes tamaños de muestra.
+
+```{r, echo=FALSE}
+medias_se_clase_edo_0.5 %>%
+    group_by(n) %>%
+    summarise(
+        media_se = round(mean(se), 2),
+        mediana_se = median(se),
+        max_se =max(se)
+        )
+```
+
+
+### Consideraciones
+
+* Se puede aumentar el tamaño de muestra para poder tener errores estándar aceptables
+para ciertas clases, estados o combinación de estado-clase.
+
+<!--
+### Diseño muestral
+Se propone un muestreo estratificado de una etapa: tomamos una muestra 
+aleatoria simple dentro de cada estrato, de manera que en el $h$-ésimo estrato
+se seleccionan $n_h$ observaciones, al azar y con la misma probabilidad, de un total 
+de $N_h$ unidades poblacionales.
+
+**Unidades observacionales (spatial assessment unit):** Polígonos de mapa,
+el área dentro de cada polígono tiene la misma clase de cobertura (asignada con 
+Madmex). 
+
+**Marco muestral:** Conjunto de polígonos. El mapa con el que trabajamos es el 
+resultado de una agregación de los segmentos *homogéneos* de Madmex (resultando 
+en ~ 40m polígonos por escena). 
+
+**Estratos:** Estado (32)$\times$Clases cobertura(32) $\times$Clases área(4).
+
+**Datos de referencia**: Imágenes RapidEye 2015.
+
+**Protocolo de etiquetado**: Experts will asign a single reference label to 
+each polygon, if a given polygon is not homogeneous the will assign the 
+prevalent class.
+ -->
+
+## Sample design
+The sample design is focused in estimating the overall proportion of area 
+correctly classified. 
+
+To accomplish this with the most precision with fixed sample size we propose a 
+one-stage stratified sampling: we independently take a Simple Random Sample 
+from each stratum, so that $n_h$ observations are randomly selected from the
+$N_h$ poulation units in stratum $h$.
+
+**Observation Units (spatial assessment unit):** Map polygons, the area within
+each polygon has the same map classification, assigned by Madmex. The map is the 
+result of an aggregation from madmex *homogeneous* segments (yielding 40m 
+polygons per scene).
+
+**Sampling frame:** Set of polygons.  
+
+**Stata:** State (32)$\times$Classes(32)$\times$Area class(5) (not every class is reported on every state).
+
+**Reference data**: RapidEye images 2015, this are the same images that were
+input for the classification.
+
+**Reference labeling protocol**: Experts will asign a single reference label to 
+each polygon, if a given polygon is not homogeneous the will assign the 
+prevalent class.
+
+**Agreement:** For a given unit (polygon) if reference label and map label 
+agree the map is correct for that unit ($y_i=1$).
+
+### Estimators
+The overall proportion of area correctly classified (population quantity) is:
+
+$$p = \sum_{h=1}^H \frac{M_h}{M_0}p_h$$
+
+Where $M_h$ is the area of the $hth$ strata, $M_0=\sum M_h$ is the total area
+of Mexico, and $p_h$ is the accuracy within strata.
+
+An estimator for $p$ is:
+
+$$\hat{p} = \sum_{h=1}^H \frac{M_h}{M_0}\hat{p}_h$$
+
+with standard error:
+
+$$SE(\hat{p}) = \sqrt{\sum_{h=1}^H\bigg(1-\frac{n_h}{N_h}\bigg)\bigg(\frac{M_h}{M_0}\bigg)^2\frac{s_h^2}{n_h}}$$
+where $s_h^2$ is the estimate of the population variance in stratum $h$.
+
+The population quantity $p_h$ can be computed as follows:
+
+$$p_h = \frac{\sum_{i = 1}^{N_h} M_{hi} y_{hi}}{\sum_{i = 1}^{N_h} M_{hi}}$$
+
+The estimator of $p_h$ is:
+
+$$\hat{p}_h = \frac{\sum_{i \in S_h} M_{hi} y_{hi}}{\sum_{i \in S_h} M_{hi}}$$
+where $M_{hi}$ is the size of the $ith$ polygon in strata $h$ and $y_{hi}$ 
+indicates whether the $ith$ polygon was correctly classified (takes values $1$ or $0$). 
+
+with standard error:
+$$SE(\hat{p}_h) = \sqrt{\bigg(1-\frac{n_h}{N_h}\bigg)\frac{1}{n_h\bar{M_h}^2} \frac{\sum_{i \in S_h} M_{hi}^2(y_{hi}-\hat{p}_h)^2}{n_h-1}}$$
+where $n_h$ is the sample size in strata $h$, $N_h$ is the population size (number
+of polygons) in strata $h$, and $\bar{M_h}$ is the average area of the polygons in
+the sample.
+
+And we have that the variance for the overall accuracy is:
+$$SE(\hat{p}) = \sqrt{\sum_{h=1}^H\bigg(1-\frac{n_h}{N_h}\bigg)\bigg(\frac{M_h}{M_0}\bigg)^2\frac{1}{n_h \bar{M_h}^2} \frac{\sum_{i \in S_h} M_{hi}^2(y_{hi}-\hat{p}_h)^2}{n_h-1}}$$
+
+### Sample allocation
+The sample allocation is an optimization problem, we usually want minimum variance 
+suject to fixed sample size, however, the ratio estimator is biased and thus it 
+is more appropiate to minimize the mean squared error:
+
+Let $w_i=M_iy_i$, then (we drop the $h$ subindex to avoid clutter):
+
+$$\hat{p}=\frac{\sum_{i \in S} M_{i} y_{i}}{\sum_{i \in S} M_{i}}=\frac{\sum_{i \in S} w_{i}}{\sum_{i \in S} M_{i}}$$
+and we have that:
+
+$$MSE(\hat{p}) \approx \bigg(1-\frac{n}{N}\bigg)\frac{S_w^2-2BRS_wS_M+p^2S_M^2}{n\bar{M_U^2}}$$
+where $R$ is the correlation between $w$ and $M$, $S_w$ and $S_M$ are the standard
+deviations, $B$ is the true proportion, and $\bar{M_U^2}$ is the average polygon
+size (population value).
+
+The bias of the estimator is: 
+
+$$Bias(\hat{p})\approx \bigg(1-\frac{n}{N}\bigg)\frac{1}{n\bar{M}^2}(BS_M^2-RS_MS_w)$$
+
+From the formula above we conclude that bias will be small since the correlation
+between $w_i=M_iy_i$ and $M$ is high, also, we are stratifying by the size of the
+polygons so we control the variance on the size of the polygons: $S_M^2$.
+
+Now, in order to solve the sample allocation problem we need assumptions on the
+population quantities $B$, $R$ and $S_w$. Thus we explored the alternative where
+the accuracy is $0.5$ across all cover classes, $0.8$ across all cover classes, 
+and that it varies by class according to the results of the Madmex validation 
+for the 2011 map.

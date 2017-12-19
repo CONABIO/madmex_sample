@@ -1,0 +1,330 @@
+---
+title: "Sample Design Mad-Mex"
+output: html_document
+author: Teresa Ortiz
+---
+
+```{r, echo=FALSE, results="hide", message=FALSE}
+# prueba Yucatán
+#library(rgdal)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(Hmisc)
+library(printr)
+#library(formatR)
+
+source("sampling_functions.R")
+
+# ruta_yuc <- "/LUSTRE/MADMEX/tw/yuc.zip"
+# expandimos zip en carpeta temporal
+# dir_unzip <- tempdir()
+# unzip(ruta_yuc, exdir = dir_unzip)
+# gdb_path <- dir(dir_unzip, pattern = "gdb", full.names = TRUE)
+
+# Read the feature class
+# feature_class <- readOGR(dsn = gdb_path)
+
+load("datos_procesados/feature_class.Rdata")
+
+# Determine the FC extent, projection, and attribute information
+# summary(feature_class)
+
+# creamos id 
+# fc_data <- feature_class@data
+fc_data$id_muestra <- 1:nrow(fc_data)
+# precision_yuc <- estima_precision(fc_data) # samples to verify error and SE
+```
+
+
+In this document we propose 2 sample designs to assess the accuracy of the 
+MAD-Mex 2015 RapidEye (1:20,000) map. 
+
+## Sampling design 1
+
+### Objectives
+* Estimate the overall accuracy of polygons correctly classified. 
+
+* Estimate the accuracy of polygons correctly classified within each 
+state-class.
+
+
+### Design
+One-stage stratified sampling: we independently take a Simple Random Sample 
+from each stratum, so that $n_h$ observations are randomly selected from the
+$N_h$ poulation units in stratum $h$.
+
+**Observation Units (spatial assessment unit):** Map polygons, the area within
+each polygon has the same map classification, assigned by Madmex. The map is the 
+result of an aggregation from madmex *homogeneous* segments (yielding 40m 
+polygons per scene).
+
+**Sampling frame:** Set of polygons.  
+
+**Stata:** State (32)$\times$Classes (not every class is reported on every state).
+
+**Reference data**: RapidEye images 2015, this are the same images that were
+input for the classification.
+
+**Reference labeling protocol**: Experts will asign a single reference label to 
+each polygon, if a given polygon is not homogeneous the will assign the 
+prevalent class.
+
+**Agreement:** For a given unit (polygon) if reference label and map label 
+agree the map is correct for that unit ($y_i=1$).
+
+### Estimators
+For the overall accuracy (proportion of polygos correctly classified) we propose 
+the estimator $\hat{p}_{str}$:
+
+$$\hat{p}_{str}=\sum_{h\in H}\frac{N_h}{N}\hat{p}_h$$
+where $H$ is the number of strata, $N_h$ is the number of polygons in the $h$th
+stratum, $N$ is the total number of polygons and $\hat{p_h}$ is the proportion 
+of polygons correctly classified in stratum $h$.
+
+The variance of $\hat{p}_{str}$:
+
+$$Var(\hat{p}_{str})=\sum_{h\in H}(1-f_h)\bigg(\frac{N_h}{N}\bigg)^2\frac{s_h^2}{n_h}$$
+where $s_h^2=\frac{n_h}{n_h-1}\hat{p_h}(1-\hat{p_h})$, thus:
+
+$$Var(\hat{p}_{str})=\sum_{h\in H}(1-f_h)\bigg(\frac{N_h}{N}\bigg)^2\frac{\hat{p_h}(1-\hat{p_h})}{n_h-1}$$
+where $n_h$ is the sample size in the $h$th stratum. 
+
+## Sample size computation
+To decide how many polygons to sample from each stratum we must consider the
+objectives of the accuracy assessment and make certain assumptions.
+
+Regarding the estimation of the overall accuracy we can go with **Neyman 
+allocation**: assuming that the direct cost to sample an individual element is 
+equal across strata, then the most precision for the least cost is achieved 
+setting sample sizes as follows:
+
+$$n_h= n\frac{N_hS_h}{\Sigma N_iS_i}$$
+
+If we also assume that the variance is equal across strata then the optimal 
+allocation is **proportional allocation**: the number of sampled units in each 
+stratum is proportional to the size of the stratum.
+
+$$\frac{n_h}{N_h}=\frac{n}{N} $$
+
+If we take into account that we are interested in estimating the accuracy for
+each cover-class in each state, then we can specify the precision within strata.
+If the desired precision is expressed in absolute terms, as 
+
+$$P(|\hat{p}-p|\le e)=1-\alpha$$
+For many surveys in which a proportion is measured, we set the margin of error 
+$e = 0.03$ and $\alpha=0.05$.
+
+$$n=\frac{z_{\alpha/2}^2S^2}{e^2+z_{\alpha/2}^2S^2/N}$$
+
+In surveys in which the response of interest is a proportion $S^2\approx p(1-p)$
+which attains its maximal value when $p=1/2$, so using 
+
+$$n_0=1.96^2/4e^2$$
+
+will result in a 95\% CI with width at most $2e$.
+
+e    |  n
+-----|-----
+0.01 |9600
+0.03 |1000
+0.05 |400
+0.07 |200
+0.10 |100
+
+Results from Mad-Mex RE 2011 indicate accuracy (user's accuracy) varies from 
+class to class from $p=0.2$ to $p=0.8$, hence for $e = 0.03$ we have
+
+p    |  n
+-----|----
+0.2  |680
+0.3  |900
+0.4  |1000
+0.5  |1070
+
+### Compromise
+We propose a compromise between propotional allocation and a desired 
+precision within strata. We also need to take into account that $S^2$, 
+the variance within strata is unkown, thus we could use 2011 estimates to 
+approximate $S^2$ and use Neyman allocation. 
+
+An alternative is to use 1/4 as an upper bound for $S^2$ and use a compromise between 
+proportional allocation and sufficient sample size within strata. For example, 
+if proportional allocation results in a sample size $n_h \le 100$ then set 
+$n_h=100$, the minimum sample size within strata will depend on which is an 
+acceptable margin of error for each class within a state, if the minimum is 
+$50$, we get a margin of approximately $0.14$.
+
+### Example: Yucatan
+
+Proportional allocation for $n=200, 500,1000,1500`$:
+
+```{r, echo = FALSE}
+N <- nrow(fc_data)
+sample_prop <- fc_data %>%
+    group_by(interpreta) %>%
+    dplyr::summarise(
+        N_h = n(), 
+        prop_size_h = round(100 * N_h / N), 
+        n_200 = round(prop_size_h * 2),
+        n_500 = round(prop_size_h * 5),
+        n_1000 = round(prop_size_h * 10), 
+        n_1500 = round(prop_size_h * 15)) %>%
+    arrange(desc(N_h)) %>%
+    select(cover_class = interpreta, N_h:n_1500)
+sample_prop
+```
+
+We notice that there are strata with very small sample sizes. We can increase 
+sample to have a minimum size of 30 polygons per strata. Then using 1/4 as an
+upper bound for $S^2$ we get the standard errors we can expect for the overall
+accuracy under the different schemes, and the final sample sizes:
+
+```{r, echo=FALSE}
+sample_long <- gather(sample_prop, sample_size, n_h, n_200:n_1500)
+
+sample_long %>%
+    dplyr::mutate(n_h = ifelse(n_h < 30, 30, n_h)) %>%
+    group_by(sample_size) %>%
+    dplyr::summarise(
+        n = sum(n_h), 
+        se_p = round(sqrt(
+            sum((1 - n_h / N_h) * (N_h / N) ^ 2 * 0.25 / (n_h - 1))), 2)
+        ) %>%
+    arrange(n) %>%
+    select(initial_n=sample_size, n, se_p)
+```
+
+
+## Sampling design 2
+
+We noticed that polygons differ hugely in size. The next plot (in log 10 scale) 
+shows the area of polygons across classes for the polygons in Yucatan, the 
+smallest polygons are less than 1 m^2^ and the largest ones over 500,000 m^2, it 
+is also clear that the distribution of area has long tails. Thus, using the 
+percentage of polygons correctly classified might not be very meaningful. 
+
+```{r, echo=FALSE, width=3}
+library(ggplot2)
+ggplot(fc_data, aes(y = area_sp, x = factor(interpreta), group = interpreta)) +
+    geom_boxplot() +
+    scale_y_log10() +
+    labs(title = "Polygon's area", y = bquote(m^2), x = "assigned class")
+```
+
+Therefore, we propose as metric of accuracy an estimate of the proportion of area correctly 
+classified, moreover it is a concearn among the team that the classification of 
+smaller pixels might tend to be less accurate than larger ones, we thus include 
+the area of the polygon (categorized) as a variable for stratification.
+
+### Objectives
+* Estimate the proportion of area correctly classified. 
+
+* Estimate the proportion of area correctly classified within each state-class.
+
+## Formulas
+The overall proportion of area correctly classified is:
+
+$$p = \sum_{h=1}^H \frac{M_h}{M_0}p_h$$
+Where $M_h$ is the area of the $hth$ strata, $M_0=\sum M_h$ is the total area
+of Mexico, and $p_h$ is the accuracy within strata.
+
+An estimator for $p$ is:
+
+$$\hat{p} = \sum_{h=1}^H \frac{M_h}{M_0}\hat{p}_h$$
+
+with standard error:
+
+$$SE(\hat{p}) = \sqrt{\sum_{h=1}^H\bigg(1-\frac{n_h}{N_h}\bigg)\bigg(\frac{M_h}{M_0}\bigg)^2\frac{s_h^2}{n_h}}$$
+where $s_h^2$ is the estimate of the population variance in stratum $h$.
+
+The population quantity $p_h$ can be computed as follows:
+
+$$p_h = \frac{\sum_{i = 1}^{N_h} M_{hi} y_{hi}}{\sum_{i = 1}^{N_h} M_{hi}}$$
+The estimator of $p_h$ is:
+
+$$\hat{p}_h = \frac{\sum_{i \in S_h} M_{hi} y_{hi}}{\sum_{i \in S_h} M_{hi}}$$
+where $M_{hi}$ is the size of the $ith$ polygon in strata $h$ and $y_{hi}$ 
+indicates whether the $ith$ polygon was correctly classified (takes values $1$ or $0$). 
+
+with standard error:
+$$SE(\hat{p}_h) = \sqrt{\bigg(1-\frac{n_h}{N_h}\bigg)\frac{1}{n_h\bar{M_h}^2} \frac{\sum_{i \in S_h} M_{hi}^2(y_{hi}-\hat{p}_h)^2}{n_h-1}}$$
+where $n_h$ is the sample size in strata $h$, $N_h$ is the population size (number
+of polygons) in strata $h$, and $\bar{M_h}$ is the average area of the polygons in
+the sample.
+
+And we have that the variance for the overall accuracy is:
+$$SE(\hat{p}) = \sqrt{\sum_{h=1}^H\bigg(1-\frac{n_h}{N_h}\bigg)\bigg(\frac{M_h}{M_0}\bigg)^2\frac{1}{n_h \bar{M_h}^2} \frac{\sum_{i \in S_h} M_{hi}^2(y_{hi}-\hat{p}_h)^2}{n_h-1}}$$
+
+The ratio estimator is biased, thus we should consider a *corrected* version or 
+use an unbiased estimator (the latter might result in increased variance).
+
+## Sample allocation
+The sample allocation is an optimization problem, we want minimum variance 
+suject to constraints:
+
+$$
+\begin{equation*}
+\begin{aligned}
+& \underset{n_h}{\text{min}}
+& & \sqrt{\sum_{h=1}^H\bigg(1-\frac{n_h}{N_h}\bigg)\bigg(\frac{M_h}{M_0}\bigg)^2\frac{S_h^2}{n_h}} \\ \\
+& \text{subject to}
+& & \sum_{h=1}^H n_h = n, \\
+& & & n_h \geq c_1, \; h = 1, \ldots, H, \\
+& & & n_{e,c} \geq c_2, \; class = 1,\ldots,32. 
+\end{aligned}
+\end{equation*}
+$$
+Where $n_h$ is the sample size in stratum $h$ and $n_{e,c}$ is the sample class for
+cover class $c$ in state $e$. 
+
+Thus we seek to minimize the variance of the estimate of the overall 
+accuracy $\_hat{p}$, subject to the constraints: 
+
+* We minimize subject to a given sample size $n$ (otherwise we would just select
+every polygon).
+
+* $n_h \geq c_1$, we set a minimum size per strata in order to be able 
+to estimate the variance within strata (the minimum required for variance estimation
+would be $n_h=2$), however, when setting $c_1$ we should also consider that if 
+we are going to use a ratio estimator (within strata) the order of the bias is 
+$O(n_h^{-1})$.
+
+* In addition we set a minimum sample size within each state-cover class. This 
+is because we are interested in estimating the user's accuracy for each 
+$state \times cover \; class$, thus if we collapse the original strata 
+($state \times cover \; class \times size \; class$) to get a partition by 
+$state \times cover \; class$, and we set a minimum sample size, in order to 
+attain an acceptable estimate.
+
+* It is worth noting that the optimization problem was set in terms of minimum
+variance; however, we are using a biased estimator and it is more 
+appropriate to minimize the Mean Squared Error.
+
+### MSE 
+
+Let $w_i=M_iy_i$, then (we drop the $h$ subindex to avoid clutter):
+
+$$\hat{p}=\frac{\sum_{i \in S} M_{i} y_{i}}{\sum_{i \in S} M_{i}}=\frac{\sum_{i \in S} w_{i}}{\sum_{i \in S} M_{i}}$$
+and we have that:
+
+$$MSE(\hat{p}) \approx \bigg(1-\frac{n}{N}\bigg)\frac{S_w^2-2BRS_wS_M+p^2S_M^2}{n\bar{M_U^2}}$$
+where $R$ is the correlation between $w$ and $M$, $S_w$ and $S_M$ are the standard
+deviations, $B$ is the true proportion, and $\bar{M_U^2}$ is the average polygon
+size (population value).
+
+The bias 
+
+$$Bias(\hat{p})\approx \bigg(1-\frac{n}{N}\bigg)\frac{1}{n\bar{M}^2}(BS_M^2-RS_MS_y)$$
+
+### Notas
+
+* ¿Qué hacer con clases 0, 98, 99?
+
+* Haciendo una comparación de área de los polígonos entre los datos de Yucatán 
+(con columna BITS) y los datos de la última entrega, hay muchas diferencias, 
+en la última hay polígonos más grandes.
+
+* Los polígonos de menos de media hectárea representan el 37% de los polígonos 
+y el 4% del área total
