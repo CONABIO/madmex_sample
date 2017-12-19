@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_store
+.html
+datos_entrega/
+datos_insumo/
+datos_procesados/
+
