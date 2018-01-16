@@ -47,77 +47,14 @@ prevalent class.
 **Agreement:** For a given unit (polygon) if reference label and map label 
 agree the map is correct for that unit.
 
-## Scripts
+### Notes on Data
 
-### funciones_leer_shapes.R
-Helper functions to read shapes, compute their area and return `data.frame`s with the information.
+* Input data from MADMEX team (Thilo & Steffen): */LUSTRE/MADMEX/tw/combine* organized in folders, each folder corresponds to a RapidEye tile.
 
-### crear_marco_muestral_slurm.R
-Creates the sampling frame, consisting on a `data.frame` with the following variables: id, clase (madmex class), edo, 
-area, area_cat (area categorized) and estrato.
+* Input data */LUSTRE/MADMEX/tw/combine* was processed by MADMEX team (Erick) to create new polygons so that each polygon belongs to only one state, this is, polygons that belonged to more than one State were divided.
 
-To create the sampling frame we used *homogeneous* polygons, which are the output from madmex (post-processed to create polygons of at least 5000 m^2^), and divided so that each polygon belongs to only one State.
+#### Observations
 
-#### input 
-/LUSTRE/MADMEX/tw/entrega2/Estado/tile - RapidEye tiles with classified polygons
+* Data was not homogeneous, the data from different files had different fields.
 
-#### output
-datos_procesados/aaaa-mm-dd_pais_df.Rdata
-datos_procesados/aaaa-mm-dd_marco_muestral.Rdata
-
-### validar_marco_muestral.R
-Compare the area of the polygons in each state with the area of the corresponding state.
-
-#### input 
-procesamiento/funciones_leer_shapes.R - helper functions to read shapes
-datos_procesados/aaaa-mm-dd_pais_df.Rdata - sampling frame before tidying
-datos_procesados/aaaa-mm-dd_marco_muestral.Rdata - sampling frame
-/LUSTRE/MADMEX/eodata/footprints/shapes_estados_mexico_proyeccion_inegi_lcc - Mexico state shapes
-
-#### output
-NA
-
-### seleccionar_muestra.R
-Select sample, the sample size within each strata is numerically optimized.
-
-#### input 
-datos_procesados/aaaa-mm-dd_marco_muestral.Rdata - sampling frame
-datos_procesados/aaaa-mm-dd_pais_df.Rdata - sampling frame before tidying
-datos_procesados/aaaa-mm-dd_asignacion_optima_p_0.5_n_size.RData - list with sample size per strata
-
-#### output
-datos_procesados/aaaa-mm-dd_muestra.Rdata - data.frame with selected polygons
-datos_procesados/aaaa-mm-dd_muestra_datos.Rdata - data.frame with selected polygons and tile info.
-
-### crear_shapes_muestra_rslurm.R
-Creates shapefiles with the polygons selected in the sample. It creates one file per state-tile.
-
-#### input 
-/LUSTRE/MADMEX/tw/entrega2/Estado/tile - RapidEye tiles with classified polygons
-datos_procesados/aaaa-mm-dd_muestra_datos.Rdata - data.frame with selected polygons and tile info.
-
-#### output
-/LUSTRE/sacmod/validacion_madmex/muestra_shp_slurm/Estado shapes by state-tile with selected polygons
-
-### unificar_shapes_muestra.R
-Merges the shapefiles with the sample to create a  unique shapefile per state with the selected polygons.
-
-#### input 
-/LUSTRE/sacmod/validacion_madmex/muestra_shp_slurm/Estado shapes by state-tile with selected polygons
-
-#### output
-/LUSTRE/sacmod/validacion_madmex/muestra_shp_merged_chica/Estado
-
-## Selection of sample
-The scripts need to be run as follows
-
-1. crear_marco_muestral_slurm.R -> aaaa-mm-dd_marco_muestral.Rdata
-2. validar_marco_muestral.R 
-3. optimizacion_asignacion_muestras -> aaaa-mm-dd_asignacion_optima_p_0.5_n_size.RData  
-4. seleccionar_muestra.R -> aaaa-mm-dd_muestra_datos.Rdata 
-5. crear_shapes_muestra_slurm.R -> muestra_shp_slurm
-6. unificar_shapes_muestra.R -> muestra_shp_merged_chica/Estado
-
-
-
-
+The data 
