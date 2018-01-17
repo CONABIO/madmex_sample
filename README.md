@@ -47,25 +47,4 @@ prevalent class.
 **Agreement:** For a given unit (polygon) if reference label and map label 
 agree the map is correct for that unit.
 
-### Notes on Data
-
-* Input data from MADMEX team (Thilo & Steffen): */LUSTRE/MADMEX/tw/combine* organized in folders, each folder corresponds to a RapidEye tile.
-
-* Input data */LUSTRE/MADMEX/tw/combine* was processed by MADMEX team (Erick) to create new polygons so that each polygon belongs to only one state, this is, polygons that belonged to more than one State were divided. This step was needed so that we could define the strata using state. Output data */LUSTRE/MADMEX/tw/entrega*
-
-#### Observations
-* Polygons overlap (*/LUSTRE/MADMEX/tw/entrega*) - This issue was taken care of, we got new files (*/LUSTRE/MADMEX/tw/entrega2*).
-
-* Data was not homogeneous, the data from different files had different fields.
-
-The data 
-
-### BITS Data
-
-* 2017/12/08 Data downloaded from FTP eoss origanized in folders according to state/tile. For some tiles the polygons did not match the polygons in the sampling frame.
-
-* 2018/01/15 Data in LUSTRE/mapa_referencia_2015/conjunto one geodatabase (.gdb) per state, polygons appear to match with sampling frame. Attribute table includes: id, oid, predicted, cluster, predicted and interpreta, because it does not include the RE tile it is not possible to directly match information with sample.
-
-* 2018/01/17 Data in LUSTRE/mapa_referencia_2015/final data in folders numbered 01 through 32 (one per state?) in addition we see folders named campeche, chiapas, colima, guerrero, jalisco, michoacan, oaxaca, quintanaroo and yucatan. Pending to explore why there are repeated folders for some states.
-
 
