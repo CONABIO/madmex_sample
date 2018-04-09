@@ -56,9 +56,11 @@ res_raw <- get_slurm_out(sjob, outtype = "raw", wait = FALSE)
 pais_df <- map_df(res_raw, ~.x)
 # save(pais_df, file = "/LUSTRE/sacmod/validacion_madmex/datos_procesados/2017-08-18_pais_df.Rdata")
 
+load("datos_procesados/2017-08-18_pais_df.Rdata")
 pais_df_tidy <- pais_df %>%
+    rename(id_original = id) %>% 
     dplyr::mutate(id = 1:n()) %>%
-    dplyr::select(id, clase = predicted, edo, area = area_r) 
+    dplyr::select(id_original, oid, tile, id, clase = predicted, edo, area = area_r) 
 
 pais_df_tidy %>% 
     filter(area < 5000) %>%
@@ -103,11 +105,12 @@ marco_muestral %>%
 table(marco_muestral$area_cat)
 
 # creamos los estratos
+glimpse(marco_muestral)
 marco_muestral <- marco_muestral %>%
     mutate(estrato = paste(clase, edo, area_cat, sep = "-"))
 
 # save(marco_muestral, file = "/LUSTRE/sacmod/validacion_madmex/datos_procesados/marco_muestral.Rdata")
-save(marco_muestral, file = "/LUSTRE/sacmod/validacion_madmex/datos_procesados/2017-08-18_marco_muestral.Rdata")
+save(marco_muestral, file = "datos_procesados/2018-03-01_marco_muestral.Rdata")
 
 
 ### estratos sin área para muestra más chica
