@@ -1,0 +1,49 @@
+---
+title: "Fórmulas"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Formulas
+The overall proportion of area correctly classified is:
+
+$$p = \sum_{h=1}^H \frac{M_h}{M_0}p_h$$
+Where $M_h$ is the area of the $hth$ strata, $M_0=\sum M_h$ is the total area
+of Mexico, and $p_h$ is the accuracy within strata.
+
+An estimator for $p$ is:
+
+$$\hat{p} = \sum_{h=1}^H \frac{M_h}{M_0}\hat{p}_h$$
+
+with standard error:
+
+$$SE(\hat{p}) = \sqrt{\sum_{h=1}^H\bigg(1-\frac{n_h}{N_h}\bigg)\bigg(\frac{M_h}{M_0}\bigg)^2\frac{s_h^2}{n_h}}$$
+where $s_h^2$ is the estimate of the population variance in stratum $h$.
+
+The population quantity $p_h$ can be computed as follows:
+
+$$p_h = \frac{\sum_{i = 1}^{N_h} M_{hi} y_{hi}}{\sum_{i = 1}^{N_h} M_{hi}}$$
+The estimator of $p_h$ is:
+
+$$\hat{p}_h = \frac{\sum_{i \in S_h} M_{hi} y_{hi}}{\sum_{i \in S_h} M_{hi}}$$
+where $M_{hi}$ is the size of the $ith$ polygon in strata $h$ and $y_{hi}$ 
+indicates whether the $ith$ polygon was correctly classified (takes values $1$ or $0$). 
+
+with standard error:
+$$SE(\hat{p}_h) = \sqrt{\bigg(1-\frac{n_h}{N_h}\bigg)\frac{1}{n_h\bar{M_h}^2} \frac{\sum_{i \in S_h} M_{hi}^2(y_{hi}-\hat{p}_h)^2}{n_h-1}}$$
+where $n_h$ is the sample size in strata $h$, $N_h$ is the population size (number
+of polygons) in strata $h$, and $\bar{M_h}$ is the average area of the polygons in
+the sample.
+
+And we have that the variance for the overall accuracy is:
+$$SE(\hat{p}) = \sqrt{\sum_{h=1}^H\bigg(1-\frac{n_h}{N_h}\bigg)\bigg(\frac{M_h}{M_0}\bigg)^2\frac{1}{n_h \bar{M_h}^2} \frac{\sum_{i \in S_h} M_{hi}^2(y_{hi}-\hat{p}_h)^2}{n_h-1}}$$
+
+The ratio estimator is biased, thus we should consider a *corrected* version or 
+use an unbiased estimator (the latter might result in increased variance).
+
+
+#### Combined
+
+$$\hat{p} = \frac{\sum_h \frac{M_{h0}}{M_{h}}\sum_i M_{hi}y_{hi}}{\sum_h \frac{M_{h0}}{M_{h}} \sum_i M_{hi}}$$
+
