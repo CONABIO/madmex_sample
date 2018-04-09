@@ -260,6 +260,12 @@ $$SE(\hat{p}) = \sqrt{\sum_{h=1}^H\bigg(1-\frac{n_h}{N_h}\bigg)\bigg(\frac{M_h}{
 The ratio estimator is biased, thus we should consider a *corrected* version or 
 use an unbiased estimator (the latter might result in increased variance).
 
+
+#### Combined
+
+$$\hat{p} = \frac{\sum_h \frac{M_h}{M_0} \sum_i M_{hi}y_{hi}}{\sum_h \frac{M_h}{M_0} \sum_i M_{hi}}$$
+
+
 ## Sample allocation
 The sample allocation is an optimization problem, we want minimum variance 
 suject to constraints:
